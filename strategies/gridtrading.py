@@ -77,13 +77,12 @@ class GridTrading:
             self.level_down()
             self.EXCHANGE.buy(self.PER_LEVEL_BUY)
             self.register_buy(self.EXCHANGE.usdt_to_btc_with_fee(self.PER_LEVEL_BUY))
-            logger.debug("bought_per_level", str(self.bought_per_level_lengths()))
         elif current_price >= self.upper_level:
             self.level_up()
             amount = self.to_sell()
             self.EXCHANGE.sell(amount)
             self.profit += self.EXCHANGE.btc_to_usdt_with_fee(amount) - self.PER_LEVEL_BUY
-            logger.debug("bought_per_level", str(self.bought_per_level_lengths()))
+            logger.debug("profit", str(self.profit))
 
     def should_exit(self):
         return self.__should_exit
@@ -123,27 +122,27 @@ class GridTrading:
 
         price_lines = price_over_time.plot(prices)
         profit_lines = profit_over_time.plot(profits)
+        profit_h_line = profit_over_time.axhline(y=self.profit, linestyle=":", linewidth=0.5)
 
         def update_graph(i):
-            nonlocal price_lines, profit_lines
+            nonlocal price_lines, profit_lines, profit_h_line
+            
             current_price = self.EXCHANGE.current_price()
             prices.append(current_price)
             if len(prices) > config.GRAPH_LENGTH:
                 prices.pop(0)
 
-            price_line = price_lines.pop()
-            price_line.remove()
+            price_lines.pop().remove()
             price_lines = price_over_time.plot(prices, "m-", linewidth=1)
 
             profits.append(self.profit)
             if len(profits) > config.GRAPH_LENGTH:
                 profits.pop(0)
             
-            profit_line = profit_lines.pop()
-            profit_line.remove()
+            profit_lines.pop().remove()
             profit_lines = profit_over_time.plot(profits, "g-", linewidth=3)
-            profit_over_time.set(yticks=[self.profit])
-            profit_over_time.axhline(y=self.profit, linestyle=":", linewidth=0.5)
+            profit_h_line.remove()
+            profit_h_line = profit_over_time.axhline(y=self.profit, linestyle=":", linewidth=0.5)
 
         return matplotlib.animation.FuncAnimation(plt.gcf(), update_graph, interval=1000*60*config.STEP_FREQUENCY)
 
