@@ -2,7 +2,6 @@ import logger
 import matplotlib.animation
 import matplotlib.pyplot as plt
 import config
-import time
 
 class GridTrading:
     def __init__(self, inversion, range, start_factor, levels, exchange):
@@ -22,6 +21,7 @@ class GridTrading:
         self.mid_level = self.STARTING_PRICE
         self.upper_level = self.mid_level + self.LEVEL_HEIGHT
         self.lower_level = self.mid_level - self.LEVEL_HEIGHT
+        self.profit = 0
 
         self.print_config()
 
@@ -67,6 +67,7 @@ class GridTrading:
         for lvl in reversed(range(self.level())):
             if len(self.bought_per_level.get(lvl, [])) != 0:
                 return self.bought_per_level[lvl].pop()
+        return 0
 
     def step(self):
         current_price = self.EXCHANGE.current_price()
@@ -79,7 +80,9 @@ class GridTrading:
             logger.debug("bought_per_level", str(self.bought_per_level_lengths()))
         elif current_price >= self.upper_level:
             self.level_up()
-            self.EXCHANGE.sell(self.to_sell())
+            amount = self.to_sell()
+            self.EXCHANGE.sell(amount)
+            self.profit += self.EXCHANGE.btc_to_usdt_with_fee(amount) - self.PER_LEVEL_BUY
             logger.debug("bought_per_level", str(self.bought_per_level_lengths()))
 
     def should_exit(self):
@@ -93,9 +96,9 @@ class GridTrading:
         return result
 
     def init_plot_animation(self):
-        plt.title("BTC recent price history (24hs)")
-        plt.xlabel("x%.2f min" % config.STEP_FREQUENCY)
-        plt.ylabel("USDT")
+        _, axs = plt.subplots(2, sharex=True)
+        price_over_time = axs[0]
+        profit_over_time = axs[1]
 
         level_prices = []
         for lvl in range((self.LEVELS * 2) + 1):
@@ -107,22 +110,40 @@ class GridTrading:
 
             lvl_price = self.LOWER_BOUND + lvl * self.LEVEL_HEIGHT
             level_prices.append(lvl_price)
-            plt.plot([lvl_price] * config.GRAPH_LENGTH, color + ":")
+            price_over_time.axhline(y=lvl_price, color=color, linestyle=":", linewidth=0.5)
 
-        plt.yticks(level_prices)
+        price_over_time.set_title("BTC recent price history (last 24hs)")
+        price_over_time.set(ylabel="USDT", yticks=level_prices)
+
+        profit_over_time.set_title("Profit over time (last 24hs)")
+        profit_over_time.set(xlabel="x%.2f min" % config.STEP_FREQUENCY, ylabel="Profit (USDT)")
 
         prices = [self.EXCHANGE.current_price()]
-        lines = plt.plot(prices)
+        profits = [self.profit]
+
+        price_lines = price_over_time.plot(prices)
+        profit_lines = profit_over_time.plot(profits)
+
         def update_graph(i):
-            nonlocal lines
+            nonlocal price_lines, profit_lines
             current_price = self.EXCHANGE.current_price()
             prices.append(current_price)
             if len(prices) > config.GRAPH_LENGTH:
                 prices.pop(0)
 
-            price_line = lines.pop()
+            price_line = price_lines.pop()
             price_line.remove()
-            lines = plt.plot(prices, "m-", linewidth=1)
+            price_lines = price_over_time.plot(prices, "m-", linewidth=1)
+
+            profits.append(self.profit)
+            if len(profits) > config.GRAPH_LENGTH:
+                profits.pop(0)
+            
+            profit_line = profit_lines.pop()
+            profit_line.remove()
+            profit_lines = profit_over_time.plot(profits, "g-", linewidth=3)
+            profit_over_time.set(yticks=[self.profit])
+            profit_over_time.axhline(y=self.profit, linestyle=":", linewidth=0.5)
 
         return matplotlib.animation.FuncAnimation(plt.gcf(), update_graph, interval=1000*60*config.STEP_FREQUENCY)
 
