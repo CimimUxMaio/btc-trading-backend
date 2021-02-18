@@ -1,4 +1,8 @@
 import logger
+import matplotlib.animation
+import matplotlib.pyplot as plt
+import config
+import time
 
 class GridTrading:
     def __init__(self, inversion, range, start_factor, levels, exchange):
@@ -87,6 +91,40 @@ class GridTrading:
             result[lvl] = len(buys)
 
         return result
+
+    def init_plot_animation(self):
+        plt.title("BTC recent price history (24hs)")
+        plt.xlabel("x%.2f min" % config.STEP_FREQUENCY)
+        plt.ylabel("USDT")
+
+        level_prices = []
+        for lvl in range((self.LEVELS * 2) + 1):
+            color = "k"
+            if lvl == 0:
+                color = "r"
+            elif lvl == (self.LEVELS * 2):
+                color = "g"
+
+            lvl_price = self.LOWER_BOUND + lvl * self.LEVEL_HEIGHT
+            level_prices.append(lvl_price)
+            plt.plot([lvl_price] * config.GRAPH_LENGTH, color + ":")
+
+        plt.yticks(level_prices)
+
+        prices = [self.EXCHANGE.current_price()]
+        lines = plt.plot(prices)
+        def update_graph(i):
+            nonlocal lines
+            current_price = self.EXCHANGE.current_price()
+            prices.append(current_price)
+            if len(prices) > config.GRAPH_LENGTH:
+                prices.pop(0)
+
+            price_line = lines.pop()
+            price_line.remove()
+            lines = plt.plot(prices, "m-", linewidth=1)
+
+        return matplotlib.animation.FuncAnimation(plt.gcf(), update_graph, interval=1000*60*config.STEP_FREQUENCY)
 
     def __price_out_of_bounds(self, price):
         return price <= self.LOWER_BOUND - self.LEVEL_HEIGHT or price >= self.UPPER_BOUND + self.LEVEL_HEIGHT
