@@ -99,6 +99,7 @@ class GridTrading:
         price_over_time = axs[0]
         profit_over_time = axs[1]
         profit_over_time.set_xlim([0, config.GRAPH_LENGTH+1])
+        profit_over_time.set_ylim([-5, 10])
 
         level_prices = []
         for lvl in range((self.LEVELS * 2) + 1):
