@@ -1,28 +1,31 @@
 import time
 import exchange
 from strategies import gridtrading
-import sys
 import config
 import logger
 import matplotlib.pyplot as plt
 import threads
+import gui
+import sys
 
 class NotEnoughArgumentsException(Exception):
     def __init__(self):
-        super().__init__("Required: <INVERSION> <RANGE> <START_FACTOR> <+/- LEVLES_FROM_MIDDLE>")
+        super().__init__("Required: <INVERSION> <RANGE> <+/- LEVLES_FROM_MIDDLE>")
 
-if(len(sys.argv) < 5):
+arg_len = len(sys.argv)
+if(arg_len == 1):
+    ARGS = gui.get_settings()
+elif(len(sys.argv) < 4):
     raise NotEnoughArgumentsException()
-
-ARGS = sys.argv[1:]
+else:
+    ARGS = sys.argv[1:]
 
 INVERSION = float(ARGS[0])
 RANGE = float(ARGS[1])
-START = float(ARGS[2])
-LEVELS = int(ARGS[3])
+LEVELS = int(ARGS[2])
 
 client = exchange.Client(INVERSION)
-strategy = gridtrading.GridTrading(INVERSION, RANGE, START, LEVELS, client)
+strategy = gridtrading.GridTrading(INVERSION, RANGE / 100, 0.5, LEVELS, client)
 
 def run_strategy():
     while not strategy.should_exit():
