@@ -12,13 +12,13 @@ class NotEnoughArgumentsException(Exception):
     def __init__(self):
         super().__init__("Required: <INVERSION> <RANGE> <+/- LEVLES_FROM_MIDDLE>")
 
-arg_len = len(sys.argv)
-if(arg_len == 1):
+
+ARGS = sys.argv[1:]
+if(len(ARGS) == 0):
     ARGS = gui.get_settings()
-elif(len(sys.argv) < 4):
+
+if(len(ARGS) < 4):
     raise NotEnoughArgumentsException()
-else:
-    ARGS = sys.argv[1:]
 
 INVERSION = float(ARGS[0])
 RANGE = float(ARGS[1])
