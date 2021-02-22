@@ -69,7 +69,7 @@ class GridTrading:
                 return self.bought_per_level[lvl].pop()
         return 0
 
-    def step(self):
+    def update(self):
         current_price = self.EXCHANGE.current_price()
         if self.__price_out_of_bounds(current_price):
             self.__should_exit = True
