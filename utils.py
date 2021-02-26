@@ -1,2 +1,2 @@
 def toBoolean(s):
-    return s.lower() == "True"
+    return s.lower() == "true"

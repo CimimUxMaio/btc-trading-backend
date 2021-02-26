@@ -11,7 +11,7 @@ import utils
 
 class NotEnoughArgumentsException(Exception):
     def __init__(self):
-        super().__init__("Required: <INVERSION> <RANGE> <+/- LEVLES_FROM_MIDDLE> <DISPLAY_GRAPHS? (True/False)>")
+        super().__init__("Required: <INVERSION> <RANGE (%)> <+/- LEVLES_FROM_MIDDLE> <DISPLAY_GRAPHS? (True/False)>")
 
 
 ARGS = sys.argv[1:]
@@ -26,17 +26,15 @@ RANGE = float(ARGS[1])
 LEVELS = int(ARGS[2])
 DISPLAY_GRAPHS = utils.toBoolean(ARGS[3])
 
-print(ARGS)
-
-client = exchange.Client(INVERSION)
+client = exchange.FakeExchange()
 strategy = gridtrading.GridTrading(INVERSION, RANGE / 100, 0.5, LEVELS, client)
 
 def run_strategy():
-    while not strategy.should_exit():
+    while True:
         time.sleep(config.STEP_FREQUENCY * 60)
         strategy.update()
-
-    logger.info(logger.EXIT, "Program terminated with wallet status: %s" % str(client.wallet_status()))
+        if strategy.should_exit():
+            break
 
 
 if DISPLAY_GRAPHS:

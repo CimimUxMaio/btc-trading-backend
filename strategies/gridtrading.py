@@ -7,92 +7,40 @@ class GridTrading:
     def __init__(self, inversion, range, start_factor, levels, exchange):
         self.__should_exit = False
 
-        self.EXCHANGE = exchange
+        self.exchange = exchange
         self.INVERSION = inversion
         self.LEVELS = levels
         self.DELTA = range * 100
-        self.STARTING_PRICE = self.EXCHANGE.current_price()
+        self.STARTING_PRICE = self.exchange.current_price()
         self.UPPER_BOUND = self.STARTING_PRICE * (1 + range)
         self.LOWER_BOUND = self.STARTING_PRICE * (1 - range)
         self.LEVEL_HEIGHT = (self.UPPER_BOUND - self.LOWER_BOUND) / (2 * self.LEVELS)
-        self.INITIAL_BUY = inversion * start_factor
-        self.PER_LEVEL_BUY = self.INITIAL_BUY / self.LEVELS
+        self.INITIAL_BTC_INVERSION = inversion * start_factor
+        self.PER_LEVEL_BUY = self.INITIAL_BTC_INVERSION / self.LEVELS
 
         self.mid_level = self.STARTING_PRICE
         self.upper_level = self.mid_level + self.LEVEL_HEIGHT
         self.lower_level = self.mid_level - self.LEVEL_HEIGHT
-        self.profit = 0
 
-        self.print_config()
+        self.__on_start()
 
-        self.EXCHANGE.buy(self.INITIAL_BUY)
-        self.bought_per_level = { self.level(): [self.EXCHANGE.my_BTC / self.LEVELS] * self.LEVELS }
-
-    def initial_level(self):
-        return round((self.STARTING_PRICE - self.LOWER_BOUND) / self.LEVEL_HEIGHT)
-
-    def level(self):
-        return round((self.mid_level - self.LOWER_BOUND) / self.LEVEL_HEIGHT)
-
-    def register_buy(self, btc_bought):
-        level = self.level()
-        self.bought_per_level[level] = [btc_bought] + self.bought_per_level.get(level, [])
-
-    def level_up(self):
-        self.lower_level = self.mid_level
-        self.mid_level = self.upper_level
-        self.upper_level += self.LEVEL_HEIGHT
-
-    def level_down(self):
-        self.upper_level = self.mid_level
-        self.mid_level = self.lower_level
-        self.lower_level -= self.LEVEL_HEIGHT
-
-    def print_config(self):
-        config_description = """
-
-        INVERSION:       $ %f USDT
-        INITIAL BUY:     $ %f USDT
-        DELTA:           %% %f
-        STARTING PRICE:  $ %f USDT
-        UPPER BOUND:     $ %f USDT
-        LOWER BOUND:     $ %f USDT
-        TOTAL LEVELS:      %d
-        LEVEL HEIGHT:    $ %f USDT
-        PER LEVEL BUY:   $ %f USDT
-        """ % (self.INVERSION, self.INITIAL_BUY, self.DELTA, self.STARTING_PRICE, self.UPPER_BOUND, self.LOWER_BOUND, self.LEVELS * 2, self.LEVEL_HEIGHT, self.PER_LEVEL_BUY)
-        logger.info(logger.INIT, config_description)
-
-    def to_sell(self):
-        for lvl in reversed(range(self.level())):
-            if len(self.bought_per_level.get(lvl, [])) != 0:
-                return self.bought_per_level[lvl].pop()
-        return 0
+        self.__log_config()
 
     def update(self):
-        current_price = self.EXCHANGE.current_price()
+        current_price = self.exchange.current_price()
         if self.__price_out_of_bounds(current_price):
             self.__should_exit = True
+            logger.info(logger.EXIT, "Program terminated.")
+            self.__log_status()
         elif current_price <= self.lower_level:
-            self.level_down()
-            self.EXCHANGE.buy(self.PER_LEVEL_BUY)
-            self.register_buy(self.EXCHANGE.usdt_to_btc_with_fee(self.PER_LEVEL_BUY))
+            self.__level_down()
+            self.__on_level_down()
         elif current_price >= self.upper_level:
-            self.level_up()
-            amount = self.to_sell()
-            self.EXCHANGE.sell(amount)
-            self.profit += self.EXCHANGE.btc_to_usdt_with_fee(amount) - self.PER_LEVEL_BUY
-            logger.debug("profit", str(self.profit))
+            self.__level_up()
+            self.__on_level_up()
 
     def should_exit(self):
         return self.__should_exit
-
-    def bought_per_level_lengths(self):
-        result = {}
-        for lvl, buys in self.bought_per_level.items():
-            result[lvl] = len(buys)
-
-        return result
 
     def init_plot_animation(self):
         _, axs = plt.subplots(2, sharex=True)
@@ -119,7 +67,7 @@ class GridTrading:
         profit_over_time.set_title("Profit over time (last 24hs)")
         profit_over_time.set(xlabel="x%.2f min" % config.STEP_FREQUENCY, ylabel="Profit (USDT)")
 
-        prices = [self.EXCHANGE.current_price()]
+        prices = [self.exchange.current_price()]
         profits = [self.profit]
 
         price_lines = price_over_time.plot(prices)
@@ -129,7 +77,7 @@ class GridTrading:
         def update_graph(i):
             nonlocal price_lines, profit_lines, profit_h_line
             
-            current_price = self.EXCHANGE.current_price()
+            current_price = self.exchange.current_price()
             prices.append(current_price)
             if len(prices) > config.GRAPH_LENGTH:
                 prices.pop(0)
@@ -148,5 +96,116 @@ class GridTrading:
 
         return matplotlib.animation.FuncAnimation(plt.gcf(), update_graph, interval=1000*60*config.STEP_FREQUENCY)
 
+    def __initial_level(self):
+        return self.LEVELS # round((self.STARTING_PRICE - self.LOWER_BOUND) / self.LEVEL_HEIGHT)
+
+    def __current_level(self):
+        return round((self.mid_level - self.LOWER_BOUND) / self.LEVEL_HEIGHT)
+
+    def __current_level_price(self):
+        return self.mid_level # self.__level_price(self.__current_level())
+
+    def __level_price(self, level):
+        return self.LOWER_BOUND + level * self.LEVEL_HEIGHT
+
     def __price_out_of_bounds(self, price):
         return price <= self.LOWER_BOUND - self.LEVEL_HEIGHT or price >= self.UPPER_BOUND + self.LEVEL_HEIGHT
+
+    def __level_up(self):
+        self.lower_level = self.mid_level
+        self.mid_level = self.upper_level
+        self.upper_level += self.LEVEL_HEIGHT
+
+    def __level_down(self):
+        self.upper_level = self.mid_level
+        self.mid_level = self.lower_level
+        self.lower_level -= self.LEVEL_HEIGHT
+
+    def __balance(self):
+        return self.usdt + self.exchange.btc_to_usdt_with_fee(self.btc, self.__current_level_price())
+
+    def __log_current_level_market_price(self):
+        logger.info(logger.MARKET, f"{self.__current_level_price()} USDT / BTC")
+
+    def __return_percentaje(self, buy_price, sell_price):
+        return 100 * ((sell_price / buy_price) * self.exchange.tao() -1)
+        
+    def __estimated_profit_per_sell_range(self):
+        min_sell_price = self.LOWER_BOUND + self.LEVEL_HEIGHT
+        max_profit = self.__return_percentaje(self.LOWER_BOUND, min_sell_price)
+        max_buy_price = self.UPPER_BOUND - self.LEVEL_HEIGHT
+        min_profit = self.__return_percentaje(max_buy_price, self.UPPER_BOUND)
+        return [min_profit, max_profit]
+
+    def __log_config(self):
+        profit_range = self.__estimated_profit_per_sell_range()
+        config_description = """
+
+        INVERSION:                   $ %f USDT
+        INITIAL BUY:                 $ %f USDT
+        RANGE:                         %f %%
+        STARTING PRICE:              $ %f USDT
+        UPPER BOUND:                 $ %f USDT
+        LOWER BOUND:                 $ %f USDT
+        TOTAL LEVELS:                  %d
+        LEVEL HEIGHT:                $ %f USDT
+        PER LEVEL BUY:               $ %f USDT
+        ESTIMATED PROFIT PER SELL:   + %f%% - %f%%   (%f USDT - %f USDT)
+        """ % (self.INVERSION, self.INITIAL_BTC_INVERSION, self.DELTA, self.STARTING_PRICE, self.UPPER_BOUND, self.LOWER_BOUND, self.LEVELS * 2, self.LEVEL_HEIGHT, self.PER_LEVEL_BUY, profit_range[0], profit_range[1], profit_range[0]*self.PER_LEVEL_BUY/100, profit_range[1]*self.PER_LEVEL_BUY / 100)
+        logger.info(logger.INIT, config_description)
+        self.__log_status()
+
+    def __log_status(self):
+        logger.info(logger.STATUS, f"USDT: {self.usdt}    BTC: {self.btc}    PROFIT: {self.profit} USDT    CURRENT BALANCE: {self.__balance()} USDT")
+
+    def __on_start(self):
+        self.INITIAL_BTC = self.exchange.set_and_wait_limit_buy_order(self.INITIAL_BTC_INVERSION, self.STARTING_PRICE)
+        self.__sold_initial_buy = {}
+        self.profit = self.INITIAL_BTC_INVERSION * (self.exchange.tao() - 1)
+        self.usdt = self.INVERSION - self.INITIAL_BTC_INVERSION
+        self.btc = self.INITIAL_BTC
+
+        # Upper levels
+        for lvl in range(self.__initial_level()+1, 2*self.LEVELS+1):
+            self.exchange.set_limit_sell_order(self.INITIAL_BTC/self.LEVELS, self.__level_price(lvl))
+            self.__sold_initial_buy[lvl] = False
+
+        # Lower levels
+        for lvl in range(0, self.__initial_level()):
+            self.exchange.set_limit_buy_order(self.PER_LEVEL_BUY, self.__level_price(lvl))
+
+    def __on_level_down(self):
+        # Set sell order level+1
+        amount_bought = self.exchange.usdt_to_btc_with_fee(self.PER_LEVEL_BUY, self.__current_level_price())
+        next_level_price = self.__level_price(self.__current_level()+1)
+        self.exchange.set_limit_sell_order(amount_bought, next_level_price)
+
+        # Notify buy
+        self.usdt -= self.PER_LEVEL_BUY
+        self.btc += amount_bought
+        self.__log_current_level_market_price()
+        logger.info(logger.BUY, f"Bought {amount_bought} BTC for a total of {self.PER_LEVEL_BUY} USDT.")
+        self.__log_status()
+
+    def __on_level_up(self):
+        # Set buy order for level-1
+        previous_level_price = self.__level_price(self.__current_level()-1)
+        self.exchange.set_limit_buy_order(self.PER_LEVEL_BUY, previous_level_price)
+
+        # Notify sell
+        current_lvl = self.__current_level()
+        previous_price = previous_level_price
+        if(not self.__sold_initial_buy.get(current_lvl, True)):
+            previous_price = self.STARTING_PRICE
+            self.__sold_initial_buy[current_lvl] = True
+            
+        amount_sold = self.exchange.usdt_to_btc_with_fee(self.PER_LEVEL_BUY, previous_price)
+        usdt_obtained = self.exchange.btc_to_usdt_with_fee(amount_sold, self.__current_level_price())
+        profit_gain = usdt_obtained - self.PER_LEVEL_BUY
+        self.profit += profit_gain
+        self.usdt += usdt_obtained
+        self.btc -= amount_sold
+        self.__log_current_level_market_price()
+        logger.info(logger.SELL, f"Sold {amount_sold} BTC for a total of {usdt_obtained} USDT.")
+        logger.info(logger.PROFIT, f"Profit gained: + {profit_gain} USDT.")
+        self.__log_status()
