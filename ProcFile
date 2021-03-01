@@ -1,1 +1,1 @@
-worker: python main.py 100 20 4 False
+release: python main.py 100 20 4 False
