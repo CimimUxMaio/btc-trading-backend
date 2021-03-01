@@ -13,7 +13,7 @@ def _get_resource(resource, params = {}):
     res.raise_for_status()
     return res.json()
 
-class FakeExchange(Exchange):
+class FakeBinance(Exchange):
     def __init__(self, fee=0.001):
         self.fee = fee
         self.__last_price_time = datetime.now()
@@ -67,3 +67,6 @@ class FakeExchange(Exchange):
         self.__order_id_acum += 1
         self.__order_prices[order_id] = (self.current_price(), price)
         return order_id
+
+    def __get_fees(self):
+        pass

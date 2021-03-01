@@ -1,5 +1,5 @@
+from exchange.fakebinance import FakeBinance
 import time
-from exchange.fakeexchange import FakeExchange
 from strategies import gridtrading
 import config
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ RANGE = float(ARGS[2])
 LEVELS = int(ARGS[3])
 DISPLAY_GRAPHS = utils.toBoolean(ARGS[4])
 
-client = FakeExchange()
+client = FakeBinance()
 strategy = gridtrading.GridTrading(STARTING_PRICE, INVERSION, RANGE / 100, LEVELS, client)
 
 def run_strategy():
