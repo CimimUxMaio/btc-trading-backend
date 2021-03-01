@@ -1,8 +1,7 @@
 import time
-import exchange
+from exchange.fakeexchange import FakeExchange
 from strategies import gridtrading
 import config
-import logger
 import matplotlib.pyplot as plt
 import threads
 import gui
@@ -11,7 +10,7 @@ import utils
 
 class NotEnoughArgumentsException(Exception):
     def __init__(self):
-        super().__init__("Required: <INVERSION> <RANGE (%)> <+/- LEVLES_FROM_MIDDLE> <DISPLAY_GRAPHS? (True/False)>")
+        super().__init__("Required: <STARTING_PRICE> <INVERSION> <RANGE (%)> <+/- LEVLES_FROM_MIDDLE> <DISPLAY_GRAPHS? (True/False)>")
 
 
 ARGS = sys.argv[1:]
@@ -21,13 +20,14 @@ if(len(ARGS) == 0):
 if(len(ARGS) < 4):
     raise NotEnoughArgumentsException()
 
-INVERSION = float(ARGS[0])
-RANGE = float(ARGS[1])
-LEVELS = int(ARGS[2])
-DISPLAY_GRAPHS = utils.toBoolean(ARGS[3])
+STARTING_PRICE = float(ARGS[0])
+INVERSION = float(ARGS[1])
+RANGE = float(ARGS[2])
+LEVELS = int(ARGS[3])
+DISPLAY_GRAPHS = utils.toBoolean(ARGS[4])
 
-client = exchange.FakeExchange()
-strategy = gridtrading.GridTrading(INVERSION, RANGE / 100, 0.5, LEVELS, client)
+client = FakeExchange()
+strategy = gridtrading.GridTrading(STARTING_PRICE, INVERSION, RANGE / 100, LEVELS, client)
 
 def run_strategy():
     while True:

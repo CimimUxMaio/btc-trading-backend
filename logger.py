@@ -13,6 +13,8 @@ def debug(target_variable_name, message):
     if(config.DEBUG):
         __logger.debug(" %s: %s" % (target_variable_name, message))
 
+def next_line():
+    print()
 
 
 # Events
@@ -22,5 +24,6 @@ SELL = "SELL"
 MARKET = "MARKET"
 STATUS = "STATUS"
 INIT = "INIT"
+START = "START"
 EXIT = "EXIT"
 PROFIT = "PROFIT"

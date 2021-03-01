@@ -1,8 +1,8 @@
+from exchange.exchange import Exchange
 import threading
 import requests
 from datetime import datetime
 import config
-import logger
 
 HOST = "https://api.binance.com/api/v3"
 
@@ -13,12 +13,14 @@ def _get_resource(resource, params = {}):
     res.raise_for_status()
     return res.json()
 
-class FakeExchange:
+class FakeExchange(Exchange):
     def __init__(self, fee=0.001):
         self.fee = fee
         self.__last_price_time = datetime.now()
         self.__last_price = self.__force_get_current_price()
         self.__price_mutex = threading.Lock()
+        self.__order_id_acum = 1
+        self.__order_prices = {}
 
     def current_price(self):
         self.__price_mutex.acquire()
@@ -44,22 +46,24 @@ class FakeExchange:
     def btc_to_usdt_with_fee(self, btc, price):
         return price * btc * (1 - self.transaction_fee())
 
-    # Returns the expected btc to receive
     def set_limit_buy_order(self, usdt, price):
-        btc_to_receive = self.usdt_to_btc_with_fee(usdt, price)
-        return btc_to_receive
+        return self.__generate_order(price)
 
-    # Returns the expected usdt to receive
     def set_limit_sell_order(self, btc, price):
-        usdt_to_receive = self.btc_to_usdt_with_fee(btc, price)
-        return usdt_to_receive
+        return self.__generate_order(price)
 
-    def set_and_wait_limit_buy_order(self, usdt, price):
-        return self.set_limit_buy_order(usdt, price)
-    
-    def set_and_wait_limit_sell_order(self, btc, price):
-        return self.set_limit_sell_order(btc, price)
+    def was_filled(self, order_id):
+        price_when_ordered = self.__order_prices[order_id][0]
+        order_price = self.__order_prices[order_id][1]
+        current_price = self.current_price()
+        return price_when_ordered <= order_price <= current_price or price_when_ordered >= order_price >= current_price
 
     def __force_get_current_price(self):
         res = _get_resource("/ticker/price", { "symbol": "BTCUSDT" })
         return float(res["price"])
+
+    def __generate_order(self, price):
+        order_id = self.__order_id_acum
+        self.__order_id_acum += 1
+        self.__order_prices[order_id] = (self.current_price(), price)
+        return order_id
