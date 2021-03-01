@@ -67,6 +67,3 @@ class FakeBinance(Exchange):
         self.__order_id_acum += 1
         self.__order_prices[order_id] = (self.current_price(), price)
         return order_id
-
-    def __get_fees(self):
-        pass

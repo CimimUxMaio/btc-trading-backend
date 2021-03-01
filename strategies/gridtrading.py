@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import config
 
 class GridTrading(TradingStrategy):
-    def __init__(self, starting_price, inversion, range, levels, exchange):
+    def __init__(self, inversion, range, levels, exchange, *args):
         self.__should_exit = False
 
         self.exchange: Exchange = exchange
         self.INVERSION = inversion
         self.LEVELS = levels
         self.DELTA = range * 100
-        self.STARTING_PRICE = starting_price
+        self.STARTING_PRICE = float(args[0]) if len(args) > 0 else self.exchange.current_price()
         self.UPPER_BOUND = self.STARTING_PRICE * (1 + range)
         self.LOWER_BOUND = self.STARTING_PRICE * (1 - range)
         self.LEVEL_HEIGHT = (self.UPPER_BOUND - self.LOWER_BOUND) / (2 * self.LEVELS)
