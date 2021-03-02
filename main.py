@@ -10,7 +10,7 @@ import utils
 
 class NotEnoughArgumentsException(Exception):
     def __init__(self):
-        super().__init__("Required: <INVERSION> <RANGE (%)> <+/- LEVLES_FROM_MIDDLE> <DISPLAY_GRAPHS? (True/False)> <STARTING_PRICE (OPTIONAL)>")
+        super().__init__("Required: <DISPLAY_GRAPHS? (True/False)> <INVERSION> <RANGE (%)> <+/- LEVLES_FROM_MIDDLE> <STARTING_PRICE (OPTIONAL)>")
 
 
 ARGS = sys.argv[1:]
@@ -20,10 +20,10 @@ if(len(ARGS) == 0):
 if(len(ARGS) < 4):
     raise NotEnoughArgumentsException()
 
-INVERSION = float(ARGS[0])
-RANGE = float(ARGS[1])
-LEVELS = int(ARGS[2])
-DISPLAY_GRAPHS = utils.toBoolean(ARGS[3])
+DISPLAY_GRAPHS = utils.toBoolean(ARGS[0])
+INVERSION = float(ARGS[1])
+RANGE = float(ARGS[2])
+LEVELS = int(ARGS[3])
 ARGS = ARGS[4:]
 
 client = FakeBinance()
