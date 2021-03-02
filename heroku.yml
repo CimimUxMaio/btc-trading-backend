@@ -3,4 +3,4 @@ build:
     worker: Dockerfile
 
 run:
-  worker: python main.py 100 25 5 False
+  worker: 100 25 5
