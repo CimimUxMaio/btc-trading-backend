@@ -26,8 +26,8 @@ RANGE = float(ARGS[2])
 LEVELS = int(ARGS[3])
 ARGS = ARGS[4:]
 
-client = FakeBinance()
-strategy = gridtrading.GridTrading(INVERSION, RANGE / 100, LEVELS, client, *ARGS)
+exchange = FakeBinance()
+strategy = gridtrading.GridTrading(INVERSION, RANGE / 100, LEVELS, exchange, *ARGS)
 
 def run_strategy():
     while True:

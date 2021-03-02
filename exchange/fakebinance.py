@@ -3,6 +3,7 @@ import threading
 import requests
 from datetime import datetime
 import config
+import logger
 
 HOST = "https://api.binance.com/api/v3"
 
@@ -57,6 +58,9 @@ class FakeBinance(Exchange):
         order_price = self.__order_prices[order_id][1]
         current_price = self.current_price()
         return price_when_ordered <= order_price <= current_price or price_when_ordered >= order_price >= current_price
+
+    def cancel_order(self, order_id):
+        logger.info(logger.ORDER_CANCEL, f"Order {order_id} was canceled.")
 
     def __force_get_current_price(self):
         res = _get_resource("/ticker/price", { "symbol": "BTCUSDT" })

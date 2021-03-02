@@ -22,3 +22,6 @@ class Exchange:
 
     def was_filled(self, order_id) -> bool:
         pass
+
+    def cancel_order(self, order_id):
+        pass

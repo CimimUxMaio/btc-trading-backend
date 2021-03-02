@@ -47,8 +47,7 @@ class GridTrading(TradingStrategy):
             next_level = self.__current_level() + 1
             if self.__price_out_of_bounds(current_price):
                 self.__should_exit = True
-                logger.info(logger.EXIT, "Program terminated.")
-                self.__log_status()
+                self.__on_exit()
             elif current_price <= self.lower_level and self.exchange.was_filled(self.active_orders[previous_level][0]):
                 self.__level_down()
                 self.__on_level_down()
@@ -240,3 +239,10 @@ class GridTrading(TradingStrategy):
         self.__log_sell(amount_sold, usdt_obtained, profit_gain)
 
         self.active_orders.pop(self.__current_level())
+
+    def __on_exit(self):
+        logger.info(logger.EXIT, "Program terminated.")
+        self.__log_status()
+
+        for order_id in self.active_orders.values():
+            self.exchange.cancel_order(order_id)
