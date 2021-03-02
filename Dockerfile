@@ -6,6 +6,6 @@ ADD requirements.txt .
 
 RUN apt-get install tk && python3 -m pip install -r requirements.txt
 
-ENTRYPOINT [ "python", "main.py", "False" ]
+ENTRYPOINT [ "./heroku_run.sh" ]
 
 COPY . .
