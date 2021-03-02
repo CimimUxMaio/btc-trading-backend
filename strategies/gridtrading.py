@@ -171,7 +171,6 @@ class GridTrading(TradingStrategy):
         ESTIMATED PROFIT PER SELL:   + %f%% - %f%%   (%f USDT - %f USDT)
         """ % (self.INVERSION, self.INITIAL_BTC_INVERSION, self.DELTA, self.STARTING_PRICE, self.UPPER_BOUND, self.LOWER_BOUND, self.LEVELS * 2, self.LEVEL_HEIGHT, self.PER_LEVEL_BUY, profit_range[0], profit_range[1], profit_range[0]*self.PER_LEVEL_BUY/100, profit_range[1]*self.PER_LEVEL_BUY/100)
         logger.info(logger.INIT, config_description)
-        self.__log_status()
 
     def __log_status(self):
         logger.info(logger.STATUS, f"USDT: {self.usdt}    BTC: {self.btc}    PROFIT: {self.profit} USDT    CURRENT BALANCE: {self.__balance()} USDT")
@@ -193,9 +192,9 @@ class GridTrading(TradingStrategy):
         logger.info(logger.START, "Bot started!")
 
         # Initial buy excecuted
-        self.__log_buy(self.INITIAL_BTC, self.INITIAL_BTC_INVERSION)
         self.usdt -= self.INITIAL_BTC_INVERSION
         self.btc = self.INITIAL_BTC
+        self.__log_buy(self.INITIAL_BTC, self.INITIAL_BTC_INVERSION)
 
         # Upper levels
         for lvl in range(self.__initial_level()+1, 2*self.LEVELS+1):
