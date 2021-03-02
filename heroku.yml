@@ -3,4 +3,4 @@ build:
     worker: Dockerfile
 
 run:
-  worker: 100 25 5
+  worker: 100 25 5  # inversion range levels
