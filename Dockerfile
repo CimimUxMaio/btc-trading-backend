@@ -2,10 +2,10 @@ FROM python:3.8.8
 
 WORKDIR /app_src
 
-ADD requirements.txt heroku_run.sh ./
+ADD requirements.txt .
 
-RUN apt-get install tk && python3 -m pip install -r requirements.txt && chmod +x heroku_run.sh
+RUN apt-get install tk && python3 -m pip install -r requirements.txt
 
-ENTRYPOINT python main.py False
+CMD python main.py
 
 COPY . .
