@@ -1,5 +1,5 @@
 import json
-import utils
+import model.utils as utils
 
 with open("config.json") as json_file:
     CONFIG = json.load(json_file)

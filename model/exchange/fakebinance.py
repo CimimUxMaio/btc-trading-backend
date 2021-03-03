@@ -1,9 +1,9 @@
-from exchange.exchange import Exchange
+from model.exchange.exchange import Exchange
 import threading
 import requests
 from datetime import datetime
-import config
-import logger
+import model.config as config
+import model.logger as logger
 
 HOST = "https://api.binance.com/api/v3"
 

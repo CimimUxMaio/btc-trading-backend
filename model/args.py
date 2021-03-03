@@ -1,6 +1,6 @@
 import sys
-import gui
-import utils
+import model.gui as gui
+import model.utils as utils
 import os
 import json
 
@@ -23,28 +23,25 @@ def get_environmet_variables():
     optionals = []
     opts_json = os.environ.get("OPTIONALS")
     if opts_json is not None:
-        optionals = json.loads(opts_json)
+        optionals = list(json.loads(opts_json))
 
-    for opt in optionals:
-        args.append(opt)
-
+    args.extend(optionals)
     return args
 
 ARGS = sys.argv[1:]
 if(len(ARGS) == 0):
     ARGS = get_environmet_variables()
-    if(len(ARGS) < 4):
-        ARGS = gui.get_settings()
+
+if(len(ARGS) == 0):
+    ARGS = gui.get_settings()
+
 
 if(len(ARGS) < 4):
-    raise NotEnoughArgumentsException()
+    utils.raise_exception(NotEnoughArgumentsException())
+
 
 DISPLAY_GRAPHS = utils.toBoolean(ARGS[0])
 INVERSION = float(ARGS[1])
 RANGE = float(ARGS[2])
 LEVELS = int(ARGS[3])
 OPTIONALS = ARGS[4:]
-
-
-
-

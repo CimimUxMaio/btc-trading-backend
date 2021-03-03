@@ -10,3 +10,6 @@ class TradingStrategy:
 
     def init_plot_animation(self) -> FuncAnimation:
         pass
+
+    def on_exit(self):
+        pass

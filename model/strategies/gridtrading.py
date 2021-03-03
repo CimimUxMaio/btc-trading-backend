@@ -1,9 +1,9 @@
-from strategies.tradingstrategy import TradingStrategy
-from exchange.exchange import Exchange
-import logger
+from model.strategies.tradingstrategy import TradingStrategy
+from model.exchange.exchange import Exchange
+import model.logger as logger
 import matplotlib.animation
 import matplotlib.pyplot as plt
-import config
+import model.config as config
 
 class GridTrading(TradingStrategy):
     def __init__(self, inversion, range, levels, exchange, *args):
@@ -47,7 +47,7 @@ class GridTrading(TradingStrategy):
             next_level = self.__current_level() + 1
             if self.__price_out_of_bounds(current_price):
                 self.__should_exit = True
-                self.__on_exit()
+                self.on_exit()
             elif current_price <= self.lower_level and self.exchange.was_filled(self.active_orders[previous_level][0]):
                 self.__level_down()
                 self.__on_level_down()
@@ -111,6 +111,13 @@ class GridTrading(TradingStrategy):
             profit_h_line = profit_over_time.axhline(y=self.profit, linestyle=":", linewidth=0.5)
 
         return matplotlib.animation.FuncAnimation(plt.gcf(), update_graph, interval=1000*60*config.STEP_FREQUENCY)
+
+    def on_exit(self):
+        logger.info(logger.EXIT, "Exiting program.")
+        self.__log_status()
+
+        for order_id in self.active_orders.values():
+            self.exchange.cancel_order(order_id[0])
 
     def __should_start(self):
         return self.exchange.was_filled(self.INITIAL_BUY_ORDER)
@@ -239,10 +246,3 @@ class GridTrading(TradingStrategy):
         self.__log_sell(amount_sold, usdt_obtained, profit_gain)
 
         self.active_orders.pop(self.__current_level())
-
-    def __on_exit(self):
-        logger.info(logger.EXIT, "Program terminated.")
-        self.__log_status()
-
-        for order_id in self.active_orders.values():
-            self.exchange.cancel_order(order_id)
