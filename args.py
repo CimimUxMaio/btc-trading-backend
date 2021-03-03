@@ -15,11 +15,20 @@ def get_environmet_variables():
     args.append(os.environ.get("INVERSION"))
     args.append(os.environ.get("RANGE"))
     args.append(os.environ.get("LEVELS"))
-    optionals = json.loads(os.environ.get("OPTIONALS"))
+
+    args = list(filter(lambda a: a is not None, args))
+    if len(args) < 4:
+        return []
+
+    optionals = []
+    opts_json = os.environ.get("OPTIONALS")
+    if opts_json is not None:
+        optionals = json.loads(opts_json)
+
     for opt in optionals:
         args.append(opt)
 
-    return list(filter(lambda a: a is not None, args))
+    return args
 
 ARGS = sys.argv[1:]
 if(len(ARGS) == 0):
