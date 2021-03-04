@@ -1,47 +1,29 @@
-import sys
-import model.gui as gui
-import model.utils as utils
+import argparse
 import os
-import json
+import sys
 
-class NotEnoughArgumentsException(Exception):
-    def __init__(self):
-        super().__init__("Required: <DISPLAY_GRAPHS? (True/False)> <INVERSION> <RANGE (%)> <+/- LEVLES_FROM_MIDDLE> <STARTING_PRICE (OPTIONAL)>")
+parser = argparse.ArgumentParser()
 
+# Positional
+name = "inversion"
+parser.add_argument(name, type=float, default=os.environ.get(name.upper()),
+                        help="The amount of USDT to be used by the bot")
 
-def get_environmet_variables():
-    args = []
-    args.append(os.environ.get("DISPLAY_GRAPHS"))
-    args.append(os.environ.get("INVERSION"))
-    args.append(os.environ.get("RANGE"))
-    args.append(os.environ.get("LEVELS"))
+name = "range"
+parser.add_argument(name, type=float, default=os.environ.get(name.upper()),
+                        help="The range from the starting price (%%) where the bot will operate")
 
-    args = list(filter(lambda a: a is not None, args))
-    if len(args) < 4:
-        return []
+name = "levels"
+parser.add_argument(name, type=int, default=os.environ.get(name.upper()),
+                        help="The amount of levels to be set on the grid divided by two")
 
-    optionals = []
-    opts_json = os.environ.get("OPTIONALS")
-    if opts_json is not None:
-        optionals = list(json.loads(opts_json))
+# Optional
+name = "display_graphs"
+parser.add_argument(f"--{name}", action="store_true", default=os.environ.get(name.upper()),
+                        help="Display the bot's graphs")
 
-    args.extend(optionals)
-    return args
+name = "starting_price"
+parser.add_argument(f"--{name}", type=float, default=os.environ.get(name.upper()),
+                        help="Starting price at with the bot will start to operate in USDT")
 
-ARGS = sys.argv[1:]
-if(len(ARGS) == 0):
-    ARGS = get_environmet_variables()
-
-if(len(ARGS) == 0):
-    ARGS = gui.get_settings()
-
-
-if(len(ARGS) < 4):
-    utils.raise_exception(NotEnoughArgumentsException())
-
-
-DISPLAY_GRAPHS = utils.toBoolean(ARGS[0])
-INVERSION = float(ARGS[1])
-RANGE = float(ARGS[2])
-LEVELS = int(ARGS[3])
-OPTIONALS = ARGS[4:]
+ARGS = parser.parse_args()

@@ -4,8 +4,8 @@ WORKDIR /app_src
 
 ADD requirements.txt .
 
-RUN apt-get install tk && python3 -m pip install -r requirements.txt
+RUN python3 -m pip install -r requirements.txt
 
-CMD python main.py
+ENTRYPOINT [ "python", "main.py" ]
 
 COPY . .

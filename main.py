@@ -8,7 +8,7 @@ import model.args as args
 import model.utils as utils
 
 exchange = FakeBinance()
-strategy = gridtrading.GridTrading(args.INVERSION, args.RANGE / 100, args.LEVELS, exchange, *args.OPTIONALS)
+strategy = gridtrading.GridTrading(args.ARGS.inversion, args.ARGS.range / 100, args.ARGS.levels, exchange, starting_price=args.ARGS.starting_price)
 
 def run_strategy():
     try:
@@ -21,7 +21,7 @@ def run_strategy():
         strategy.on_exit()
         utils.raise_exception(e)
 
-if args.DISPLAY_GRAPHS:
+if args.ARGS.display_graphs:
     strategy_thread = threads.Thread(target=run_strategy)
     strategy_thread.start()
     anim = strategy.init_plot_animation()
