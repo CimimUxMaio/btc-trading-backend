@@ -8,8 +8,11 @@ class TradingStrategy:
     def should_exit(self) -> bool:
         pass
 
-    def init_plot_animation(self) -> FuncAnimation:
+    def on_exit(self):
         pass
 
-    def on_exit(self):
+    def dto(self):
+        pass
+
+    def stop(self):
         pass

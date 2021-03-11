@@ -1,21 +1,19 @@
 from model.strategies.tradingstrategy import TradingStrategy
 from model.exchange.exchange import Exchange
 import model.logger as logger
-import matplotlib.animation
-import matplotlib.pyplot as plt
-import model.config as config
 
 class GridTrading(TradingStrategy):
     def __init__(self, inversion, range, levels, exchange, starting_price: float=None):
+
         self.__should_exit = False
 
         self.exchange: Exchange = exchange
         self.INVERSION = inversion
         self.LEVELS = levels
-        self.DELTA = range * 100
+        self.DELTA = range
         self.STARTING_PRICE = starting_price if starting_price is not None else self.exchange.current_price()
-        self.UPPER_BOUND = self.STARTING_PRICE * (1 + range)
-        self.LOWER_BOUND = self.STARTING_PRICE * (1 - range)
+        self.UPPER_BOUND = self.STARTING_PRICE * (1 + range/100)
+        self.LOWER_BOUND = self.STARTING_PRICE * (1 - range/100)
         self.LEVEL_HEIGHT = (self.UPPER_BOUND - self.LOWER_BOUND) / (2 * self.LEVELS)
         self.INITIAL_BTC_INVERSION = inversion * 0.5
         self.PER_LEVEL_BUY = self.INITIAL_BTC_INVERSION / self.LEVELS
@@ -46,7 +44,7 @@ class GridTrading(TradingStrategy):
             previous_level = self.__current_level() - 1
             next_level = self.__current_level() + 1
             if self.__price_out_of_bounds(current_price):
-                self.__should_exit = True
+                self.stop()
                 self.on_exit()
             elif current_price <= self.lower_level and self.exchange.was_filled(self.active_orders[previous_level][0]):
                 self.__level_down()
@@ -58,66 +56,15 @@ class GridTrading(TradingStrategy):
     def should_exit(self):
         return self.__should_exit
 
-    def init_plot_animation(self):
-        _, axs = plt.subplots(2, sharex=True)
-        price_over_time = axs[0]
-        profit_over_time = axs[1]
-        profit_over_time.set_xlim([0, config.GRAPH_LENGTH+1])
-        profit_over_time.set_ylim([-5, 10])
-
-        level_prices = []
-        for lvl in range((self.LEVELS * 2) + 1):
-            color = "k"
-            if lvl == 0:
-                color = "r"
-            elif lvl == (self.LEVELS * 2):
-                color = "g"
-
-            lvl_price = self.LOWER_BOUND + lvl * self.LEVEL_HEIGHT
-            level_prices.append(lvl_price)
-            price_over_time.axhline(y=lvl_price, color=color, linestyle=":", linewidth=0.5)
-
-        price_over_time.set_title("BTC recent price history (last 24hs)")
-        price_over_time.set(ylabel="USDT", yticks=level_prices)
-
-        profit_over_time.set_title("Profit over time (last 24hs)")
-        profit_over_time.set(xlabel="x%.2f min" % config.STEP_FREQUENCY, ylabel="Profit (USDT)")
-
-        prices = [self.exchange.current_price()]
-        profits = [self.profit]
-
-        price_lines = price_over_time.plot(prices)
-        profit_lines = profit_over_time.plot(profits)
-        profit_h_line = profit_over_time.axhline(y=self.profit, linestyle=":", linewidth=0.5)
-
-        def update_graph(i):
-            nonlocal price_lines, profit_lines, profit_h_line
-            
-            current_price = self.exchange.current_price()
-            prices.append(current_price)
-            if len(prices) > config.GRAPH_LENGTH:
-                prices.pop(0)
-
-            price_lines.pop().remove()
-            price_lines = price_over_time.plot(prices, "m-", linewidth=1)
-
-            profits.append(self.profit)
-            if len(profits) > config.GRAPH_LENGTH:
-                profits.pop(0)
-            
-            profit_lines.pop().remove()
-            profit_lines = profit_over_time.plot(profits, "g-", linewidth=3)
-            profit_h_line.remove()
-            profit_h_line = profit_over_time.axhline(y=self.profit, linestyle=":", linewidth=0.5)
-
-        return matplotlib.animation.FuncAnimation(plt.gcf(), update_graph, interval=1000*60*config.STEP_FREQUENCY)
-
     def on_exit(self):
         logger.info(logger.EXIT, "Exiting program.")
         self.__log_status()
 
         for order_id in self.active_orders.values():
             self.exchange.cancel_order(order_id[0])
+
+    def stop(self):
+        self.__should_exit = True
 
     def __should_start(self):
         return self.exchange.was_filled(self.INITIAL_BUY_ORDER)
@@ -161,6 +108,20 @@ class GridTrading(TradingStrategy):
         min_profit = self.__return_percentaje(self.UPPER_BOUND - self.LEVEL_HEIGHT, self.UPPER_BOUND)
         return [min_profit, max_profit]
 
+    def __config(self):
+        return {
+                "inversion": self.INVERSION, 
+                "initial_inversion": self.INITIAL_BTC_INVERSION, 
+                "range": self.DELTA, 
+                "starting_price": self.STARTING_PRICE, 
+                "upper_bound": self.UPPER_BOUND,
+                "lower_bound": self.LOWER_BOUND,
+                "total_levels": self.LEVELS * 2,
+                "level_height": self.LEVEL_HEIGHT,
+                "per_level_inversion": self.PER_LEVEL_BUY,
+                "profit_range": self.__estimated_profit_per_sell_range()
+               }
+
     def __log_config(self):
         profit_range = self.__estimated_profit_per_sell_range()
         config_description = """
@@ -177,6 +138,10 @@ class GridTrading(TradingStrategy):
         ESTIMATED PROFIT PER SELL:   + %f%% - %f%%   (%f USDT - %f USDT)
         """ % (self.INVERSION, self.INITIAL_BTC_INVERSION, self.DELTA, self.STARTING_PRICE, self.UPPER_BOUND, self.LOWER_BOUND, self.LEVELS * 2, self.LEVEL_HEIGHT, self.PER_LEVEL_BUY, profit_range[0], profit_range[1], profit_range[0]*self.PER_LEVEL_BUY/100, profit_range[1]*self.PER_LEVEL_BUY/100)
         logger.info(logger.INIT, config_description)
+
+
+    def __status(self):
+        return {"usdt": self.usdt, "btc": self.btc, "profit": self.profit, "balance": self.__balance()}
 
     def __log_status(self):
         logger.info(logger.STATUS, f"USDT: {self.usdt}    BTC: {self.btc}    PROFIT: {self.profit} USDT    CURRENT BALANCE: {self.__balance()} USDT")
@@ -246,3 +211,10 @@ class GridTrading(TradingStrategy):
         self.__log_sell(amount_sold, usdt_obtained, profit_gain)
 
         self.active_orders.pop(self.__current_level())
+
+
+    def dto(self):
+        return {
+            "configuration": self.__config(),
+            "status": self.__status()
+        }
