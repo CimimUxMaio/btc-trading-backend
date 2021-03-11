@@ -22,21 +22,6 @@ import http
 import model.logger as logger
 from model.bot import Bot
 
-# exchange = FakeBinance()
-# strategy = gridtrading.GridTrading(args.ARGS.inversion, args.ARGS.range / 100, args.ARGS.levels, exchange, starting_price=args.ARGS.starting_price)
-
-# def run_strategy():
-#     try:
-#         while True:
-#             time.sleep(config.STEP_FREQUENCY * 60)
-#             strategy.update()
-#             if strategy.should_exit():
-#                 break
-#     except BaseException as e:
-#         strategy.on_exit()
-#         utils.raise_exception(e)
-
-# run_strategy()
 
 app = Flask(__name__)
 
@@ -139,7 +124,7 @@ def bot(bot_id):
     bot: Bot = get_user_from_token().get_bot_by_id(bot_id)
     if not bot:
         raise BotNotFoundError()
-    
+
     return jsonify(bot.dto())
 
 

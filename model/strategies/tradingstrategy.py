@@ -11,6 +11,9 @@ class TradingStrategy:
     def on_exit(self):
         pass
 
+    def log_history(self):
+        pass
+
     def dto(self):
         pass
 

@@ -1,9 +1,14 @@
+from model.strategylog import StrategyLog, Event
 from model.strategies.tradingstrategy import TradingStrategy
 from model.exchange.exchange import Exchange
 import model.logger as logger
+import model.loghistory as loghistory
+import model.config as config
+
 
 class GridTrading(TradingStrategy):
     def __init__(self, inversion, range, levels, exchange, starting_price: float=None):
+        self.__log_history = loghistory.LogHistory(config.MAX_LOG_HISTORY_SIZE)
 
         self.__should_exit = False
 
@@ -32,8 +37,6 @@ class GridTrading(TradingStrategy):
         self.usdt = self.INVERSION
         self.btc = 0
 
-        self.__log_config()
-
     def update(self):
         if not self.__started and self.__should_start():
             self.__started = True
@@ -57,14 +60,20 @@ class GridTrading(TradingStrategy):
         return self.__should_exit
 
     def on_exit(self):
-        logger.info(logger.EXIT, "Exiting program.")
-        self.__log_status()
+        self.__log_event(Event.TERMINATE)
 
         for order_id in self.active_orders.values():
             self.exchange.cancel_order(order_id[0])
 
     def stop(self):
         self.__should_exit = True
+
+    def dto(self):
+        return {
+            "configuration": self.__config(),
+            "status": self.__status(),
+            "logs": [log.dto() for log in self.__log_history.history]
+        }
 
     def __should_start(self):
         return self.exchange.was_filled(self.INITIAL_BUY_ORDER)
@@ -97,9 +106,6 @@ class GridTrading(TradingStrategy):
     def __balance(self):
         return self.usdt + self.exchange.btc_to_usdt_with_fee(self.btc, self.exchange.current_price())
 
-    def __log_current_level_market_price(self):
-        logger.info(logger.MARKET, f"{self.__current_level_price()} USDT / BTC")
-
     def __return_percentaje(self, buy_price, sell_price):
         return 100 * ((sell_price / buy_price) * self.exchange.tao() -1)
         
@@ -122,50 +128,16 @@ class GridTrading(TradingStrategy):
                 "profit_range": self.__estimated_profit_per_sell_range()
                }
 
-    def __log_config(self):
-        profit_range = self.__estimated_profit_per_sell_range()
-        config_description = """
-
-        INVERSION:                   $ %f USDT
-        INITIAL BUY:                 $ %f USDT
-        RANGE:                         %f %%
-        STARTING PRICE:              $ %f USDT
-        UPPER BOUND:                 $ %f USDT
-        LOWER BOUND:                 $ %f USDT
-        TOTAL LEVELS:                  %d
-        LEVEL HEIGHT:                $ %f USDT
-        PER LEVEL BUY:               $ %f USDT
-        ESTIMATED PROFIT PER SELL:   + %f%% - %f%%   (%f USDT - %f USDT)
-        """ % (self.INVERSION, self.INITIAL_BTC_INVERSION, self.DELTA, self.STARTING_PRICE, self.UPPER_BOUND, self.LOWER_BOUND, self.LEVELS * 2, self.LEVEL_HEIGHT, self.PER_LEVEL_BUY, profit_range[0], profit_range[1], profit_range[0]*self.PER_LEVEL_BUY/100, profit_range[1]*self.PER_LEVEL_BUY/100)
-        logger.info(logger.INIT, config_description)
-
-
     def __status(self):
         return {"usdt": self.usdt, "btc": self.btc, "profit": self.profit, "balance": self.__balance()}
 
-    def __log_status(self):
-        logger.info(logger.STATUS, f"USDT: {self.usdt}    BTC: {self.btc}    PROFIT: {self.profit} USDT    CURRENT BALANCE: {self.__balance()} USDT")
-
-    def __log_buy(self, btc_bought, usdt_cost):
-        logger.next_line()
-        self.__log_current_level_market_price()
-        logger.info(logger.BUY, f"Bought {btc_bought} BTC for a total of {usdt_cost} USDT.")
-        self.__log_status()
-
-    def __log_sell(self, btc_sold, usdt_obtained, profit_gain):
-        logger.next_line()
-        self.__log_current_level_market_price()
-        logger.info(logger.SELL, f"Sold {btc_sold} BTC for a total of {usdt_obtained} USDT.")
-        logger.info(logger.PROFIT, f"Profit gained: + {profit_gain} USDT.")
-        self.__log_status()
-
     def __on_start(self):
-        logger.info(logger.START, "Bot started!")
+        self.__log_event(Event.START)
 
         # Initial buy excecuted
         self.usdt -= self.INITIAL_BTC_INVERSION
         self.btc = self.INITIAL_BTC
-        self.__log_buy(self.INITIAL_BTC, self.INITIAL_BTC_INVERSION)
+        self.__log_event(Event.BUY)
 
         # Upper levels
         for lvl in range(self.__initial_level()+1, 2*self.LEVELS+1):
@@ -188,7 +160,7 @@ class GridTrading(TradingStrategy):
         # Register buy
         self.usdt -= self.PER_LEVEL_BUY
         self.btc += amount_bought
-        self.__log_buy(amount_bought, self.PER_LEVEL_BUY)
+        self.__log_event(Event.BUY)
 
         self.active_orders.pop(self.__current_level())
 
@@ -208,13 +180,9 @@ class GridTrading(TradingStrategy):
         self.profit += profit_gain
         self.usdt += usdt_obtained
         self.btc -= amount_sold
-        self.__log_sell(amount_sold, usdt_obtained, profit_gain)
+        self.__log_event(Event.SELL)
 
         self.active_orders.pop(self.__current_level())
 
-
-    def dto(self):
-        return {
-            "configuration": self.__config(),
-            "status": self.__status()
-        }
+    def __log_event(self, event):
+        return self.__log_history.add(StrategyLog(event, self.exchange.current_price(), self.__status()))
