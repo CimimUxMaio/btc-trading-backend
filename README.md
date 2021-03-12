@@ -1,1 +1,1 @@
-# algoritmic-btc-trading
+# btc-trading-backend

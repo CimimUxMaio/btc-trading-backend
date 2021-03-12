@@ -8,4 +8,4 @@ STEP_FREQUENCY = float(CONFIG["step_frequency"])
 DEBUG = utils.toBoolean(CONFIG["debug"])
 GRAPH_LENGTH = round(24 * 60 / STEP_FREQUENCY)
 JWT_SECRET_KEY = str(CONFIG["jwt_secret_key"])
-MAX_LOG_HISTORY_SIZE = 10
+MAX_LOG_HISTORY_SIZE = int(CONFIG["max_log_history_size"])

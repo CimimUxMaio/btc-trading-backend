@@ -1,7 +1,6 @@
 from model.strategylog import StrategyLog, Event
 from model.strategies.tradingstrategy import TradingStrategy
 from model.exchange.exchange import Exchange
-import model.logger as logger
 import model.loghistory as loghistory
 import model.config as config
 

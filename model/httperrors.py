@@ -3,7 +3,7 @@ import http
 
 class HttpError(Exception):
     def __init__(self, message, code):
-        super().__init__(f"{message}. Code: {code}")
+        super().__init__(f"{message}")
         self.code = code
 
 

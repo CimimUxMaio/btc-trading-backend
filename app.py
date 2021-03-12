@@ -1,37 +1,32 @@
-from model.strategies.tradingstrategy import TradingStrategy
 from model.httperrors import BadParametersError, BotNotFoundError, HttpError, TokenNotFoundError
-import sys
 from model.user import User
-from os import error
-import flask
 from flask.helpers import make_response
 from flask.json import jsonify
-from werkzeug.utils import redirect
 from model.exchange.fakebinance import FakeBinance
-import time
 from model.strategies import gridtrading
 import model.config as config
-import model.args as args
-import model.utils as utils
 from flask import Flask, request
 import jwt
 import model.userrepo as userrepo
 import hashlib
 import datetime
 import http
-import model.logger as logger
 from model.bot import Bot
 
 
 app = Flask(__name__)
 
+
+def make_error_response(error_message, code):
+    return make_response({ "message": error_message }, code)
+
 @app.errorhandler(jwt.InvalidTokenError)
 def on_invalid_token(e):
-    return make_response("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
+    return make_error_response("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
 
 @app.errorhandler(HttpError)
 def on_token_not_found(e: HttpError):
-    return make_response(str(e), e.code)
+    return make_error_response(str(e), e.code)
 
 
 def get_user_from_token() -> User:
@@ -65,6 +60,9 @@ def login():
     response = make_response("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
 
     auth = request.authorization
+    if not auth:
+        raise BadParametersError()
+    
     user = userrepo.get_by_user(auth.username)
     password_hash = hashlib.sha256(auth.password.encode()).hexdigest()
 
