@@ -1,6 +1,6 @@
 __users = []
 
-def get_by_user(username):
+def get_by_username(username):
     return next((u for u in __users if u.username == username), None)
 
 

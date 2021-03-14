@@ -12,13 +12,17 @@ import hashlib
 import datetime
 import http
 from model.bot import Bot
+from flask_cors import CORS
 
 
 app = Flask(__name__)
-
+CORS(app)
 
 def make_error_response(error_message, code):
-    return make_response({ "message": error_message }, code)
+    return make_response(jsonify({ "message": error_message }), code)
+
+def generate_token(username):
+    return jwt.encode({"username" : username, "exp" : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, config.JWT_SECRET_KEY)
 
 @app.errorhandler(jwt.InvalidTokenError)
 def on_invalid_token(e):
@@ -32,14 +36,17 @@ def on_token_not_found(e: HttpError):
 def get_user_from_token() -> User:
     if "token" in request.cookies:
         token = request.cookies.get("token")
-        token_data = jwt.decode(token, config.JWT_SECRET_KEY, algorithms=["HS256"])
-        username = token_data["username"]
-        return userrepo.get_by_user(username)
+    elif "token" in request.args:
+        token = request.args.get("token")
     else:
         raise TokenNotFoundError()
 
+    token_data = jwt.decode(token, config.JWT_SECRET_KEY, algorithms=["HS256"])
+    username = token_data["username"]
+    return userrepo.get_by_username(username)
 
-@app.route("/test")
+
+@app.route("/test/")
 def test():
     return "Hello world!"
 
@@ -63,12 +70,12 @@ def login():
     if not auth:
         raise BadParametersError()
     
-    user = userrepo.get_by_user(auth.username)
+    user = userrepo.get_by_username(auth.username)
     password_hash = hashlib.sha256(auth.password.encode()).hexdigest()
 
     if user and user.password_hash == password_hash:
-        token = jwt.encode({"username" : user.username, "exp" : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, config.JWT_SECRET_KEY)
-        response = make_response("Login successfull!")
+        token = generate_token(user.username)
+        response = make_response(jsonify({"token": token}))
         response.set_cookie("token", token)
 
     return response
@@ -84,7 +91,7 @@ def logout():
 @app.route("/bots")
 def bots():
     all_bots = [bot.dto() for bot in get_user_from_token().active_bots]
-    return jsonify(all_bots)
+    return make_response(jsonify(all_bots))
 
 
 @app.route("/bots", methods=["POST"])
@@ -117,13 +124,13 @@ def create_bot():
     return make_response("Bot created successfully!")
 
 
-@app.route("/bots/<int:bot_id>")
+@app.route("/bots/<int:bot_id>/")
 def bot(bot_id):
     bot: Bot = get_user_from_token().get_bot_by_id(bot_id)
     if not bot:
         raise BotNotFoundError()
 
-    return jsonify(bot.dto())
+    return make_response(jsonify(bot.dto()))
 
 
 @app.route("/bots/<int:bot_id>", methods=["DELETE"])
