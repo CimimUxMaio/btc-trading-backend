@@ -2,8 +2,8 @@ from model.bot import Bot
 
 
 class User:
-    def __init__(self, username, password_hash):
-        self.username = username
+    def __init__(self, email, password_hash):
+        self.email = email
         self.password_hash = password_hash
         self.active_bots = []
 

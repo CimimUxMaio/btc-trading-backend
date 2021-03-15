@@ -1,4 +1,4 @@
-from model.httperrors import BadParametersError, BotNotFoundError, HttpError, TokenNotFoundError
+from model.httperrors import BadParametersError, BotNotFoundError, HttpError, TokenNotFoundError, UserAlreadyExistsError
 from model.user import User
 from flask.helpers import make_response
 from flask.json import jsonify
@@ -43,7 +43,7 @@ def get_user_from_token() -> User:
 
     token_data = jwt.decode(token, config.JWT_SECRET_KEY, algorithms=["HS256"])
     username = token_data["username"]
-    return userrepo.get_by_username(username)
+    return userrepo.get_by_email(username)
 
 
 @app.route("/price")
@@ -57,9 +57,10 @@ def create_user():
     if not all(key in request.json for key in ["username", "password"]):
         raise BadParametersError()
 
-    username = request.json["username"]
+    email = request.json["username"]
     password = request.json["password"]
-    userrepo.add(User(username, hashlib.sha256(password.encode()).hexdigest()))
+
+    userrepo.add(User(email, hashlib.sha256(password.encode()).hexdigest()))
     return make_response("User successfuly created!")
 
 
@@ -71,11 +72,11 @@ def login():
     if not auth:
         raise BadParametersError()
     
-    user = userrepo.get_by_username(auth.username)
+    user = userrepo.get_by_email(auth.username)
     password_hash = hashlib.sha256(auth.password.encode()).hexdigest()
 
     if user and user.password_hash == password_hash:
-        token = generate_token(user.username)
+        token = generate_token(user.email)
         response = make_response(jsonify({"token": token}))
         response.set_cookie("token", token)
 

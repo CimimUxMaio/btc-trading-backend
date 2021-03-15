@@ -15,3 +15,6 @@ def BadParametersError():
 
 def BotNotFoundError():
     return HttpError("Bot not found", http.HTTPStatus.NOT_FOUND)
+
+def UserAlreadyExistsError():
+    return HttpError("User already exists", http.HTTPStatus.CONFLICT)
