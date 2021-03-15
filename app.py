@@ -2,7 +2,7 @@ from model.httperrors import BadParametersError, BotNotFoundError, HttpError, To
 from model.user import User
 from flask.helpers import make_response
 from flask.json import jsonify
-from model.exchange.fakebinance import FakeBinance
+from model.exchange.fakebinance import FakeBinance, get_resource
 from model.strategies import gridtrading
 import model.config as config
 from flask import Flask, request
@@ -46,9 +46,10 @@ def get_user_from_token() -> User:
     return userrepo.get_by_username(username)
 
 
-@app.route("/test/")
+@app.route("/price")
 def test():
-    return "Hello world!"
+    response_json = get_resource("/ticker/price", params={ "symbol": "BTCUSDT" })
+    return make_response(jsonify({"price": response_json["price"]}))
 
 
 @app.route("/users", methods=["POST"])
@@ -101,7 +102,7 @@ def create_bot():
         "inversion",
         "range",
         "levels",
-        "starting_price" (optional)
+        "startingPrice" (optional)
     }
     """
     if not all(key in request.json for key in ["inversion", "range", "levels"]):
@@ -113,7 +114,7 @@ def create_bot():
         inversion = float(data["inversion"])
         range = float(data["range"])
         levels = int(data["levels"])
-        starting_price = float(data["starting_price"]) if "starting_price" in data else None
+        starting_price = float(data["startingPrice"]) if "startingPrice" in data else None
     except ValueError:
         raise BadParametersError()
 

@@ -5,11 +5,9 @@ from datetime import datetime
 import model.config as config
 import model.logger as logger
 
-HOST = "https://api.binance.com/api/v3"
-
-def _get_resource(resource, params = {}):
+def get_resource(resource, params = {}):
     # include API-KEY if needed
-    url = HOST + resource
+    url = config.BINANCE_API + resource
     res = requests.get(url, params)
     res.raise_for_status()
     return res.json()
@@ -63,7 +61,7 @@ class FakeBinance(Exchange):
         logger.info(logger.ORDER_CANCEL, f"Order {order_id} was canceled.")
 
     def __force_get_current_price(self):
-        res = _get_resource("/ticker/price", { "symbol": "BTCUSDT" })
+        res = get_resource("/ticker/price", { "symbol": "BTCUSDT" })
         return float(res["price"])
 
     def __generate_order(self, price):

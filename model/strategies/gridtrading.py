@@ -116,15 +116,15 @@ class GridTrading(TradingStrategy):
     def __config(self):
         return {
                 "inversion": self.INVERSION, 
-                "initial_inversion": self.INITIAL_BTC_INVERSION, 
+                "initialInversion": self.INITIAL_BTC_INVERSION, 
                 "range": self.DELTA, 
-                "starting_price": self.STARTING_PRICE, 
-                "upper_bound": self.UPPER_BOUND,
-                "lower_bound": self.LOWER_BOUND,
-                "total_levels": self.LEVELS * 2,
-                "level_height": self.LEVEL_HEIGHT,
-                "per_level_inversion": self.PER_LEVEL_BUY,
-                "profit_range": self.__estimated_profit_per_sell_range()
+                "startingPrice": self.STARTING_PRICE, 
+                "upperBound": self.UPPER_BOUND,
+                "lowerBound": self.LOWER_BOUND,
+                "totalLevels": self.LEVELS * 2,
+                "levelHeight": self.LEVEL_HEIGHT,
+                "perLevelInversion": self.PER_LEVEL_BUY,
+                "profitRange": self.__estimated_profit_per_sell_range()
                }
 
     def __status(self):

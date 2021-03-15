@@ -2,5 +2,6 @@
     "step_frequency": 0.1,
     "debug": "True",
     "jwt_secret_key": "924e88709a9095a8a120a1486fe132f4298002aa9a4f378be3a8acb5510040e3",
-    "max_log_history_size": 10
+    "max_log_history_size": 10,
+    "binance_api": "https://api.binance.com/api/v3"
 }
