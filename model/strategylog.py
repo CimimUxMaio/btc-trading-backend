@@ -10,11 +10,11 @@ class Event(Enum):
 
 
 class StrategyLog:
-    def __init__(self, event, market_price, status):
+    def __init__(self, event, market_price, profit_gain):
         self.__event = event
         self.__time = datetime.datetime.now()
         self.__market_price = market_price
-        self.__status = status
+        self.__profit_gain = profit_gain
 
     @property
     def event(self):
@@ -29,13 +29,13 @@ class StrategyLog:
         return self.__market_price
 
     @property
-    def status(self):
-        return self.__status
+    def profit_gain(self):
+        return self.__profit_gain
 
     def dto(self):
         return {
             "event": self.event.name,
             "time": self.time,
-            "market_price": self.market_price,
-            "status": self.status
+            "marketPrice": self.market_price,
+            "profitGain": self.profit_gain
         }

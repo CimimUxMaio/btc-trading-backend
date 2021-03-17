@@ -179,9 +179,9 @@ class GridTrading(TradingStrategy):
         self.profit += profit_gain
         self.usdt += usdt_obtained
         self.btc -= amount_sold
-        self.__log_event(Event.SELL)
+        self.__log_event(Event.SELL, profit_gain=profit_gain)
 
         self.active_orders.pop(self.__current_level())
 
-    def __log_event(self, event):
-        return self.__log_history.add(StrategyLog(event, self.exchange.current_price(), self.__status()))
+    def __log_event(self, event, profit_gain=0):
+        return self.__log_history.add(StrategyLog(event, self.__current_level_price(), profit_gain))

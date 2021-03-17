@@ -120,13 +120,12 @@ def create_bot():
         raise BadParametersError()
 
     strategy = gridtrading.GridTrading(inversion, range, levels, FakeBinance(), starting_price=starting_price)
-    bot = Bot(strategy)
     
-    get_user_from_token().register_bot(bot)
+    get_user_from_token().register_bot(strategy)
     return make_response("Bot created successfully!")
 
 
-@app.route("/bots/<int:bot_id>/")
+@app.route("/bots/<int:bot_id>")
 def bot(bot_id):
     bot: Bot = get_user_from_token().get_bot_by_id(bot_id)
     if not bot:
