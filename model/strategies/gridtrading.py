@@ -1,21 +1,50 @@
 from model.strategylog import StrategyLog, Event
-from model.strategies.tradingstrategy import TradingStrategy
-from model.exchange.exchange import Exchange
 import model.loghistory as loghistory
 import model.config as config
+import model.logger as logger
+
+class GridTradingBuildException(Exception):
+    def __init__(self, missing_components):
+        super().__init__(f"Could not build grid trading strategy. Mising components: {missing_components}.")
+
+class GridTradingBuilder:
+    def __init__(self):
+        self.__components = {}
+        for component in ["inversion", "range", "levels", "starting_price", "exchange"]:
+            self.__components[component] = None
+
+    def set_config(self, inversion, range, levels, starting_price):
+        self.__components["inversion"] = inversion
+        self.__components["range"] = range
+        self.__components["levels"] = levels
+        self.__components["starting_price"] = starting_price
+
+    def set_exchange(self, exchange):
+        self.__components["exchange"] = exchange
+
+    def build(self):
+        missing_components = []
+        for component in self.__components.keys():
+            if self.__components.get(component, None) is None:
+                missing_components.append(component)
+
+        if len(missing_components) > 0:
+            raise GridTradingBuildException(missing_components)
+
+        return GridTrading(**self.__components)
 
 
-class GridTrading(TradingStrategy):
-    def __init__(self, inversion, range, levels, exchange, starting_price: float=None):
+class GridTrading:
+    def __init__(self, inversion, range, levels, exchange, starting_price):
         self.__log_history = loghistory.LogHistory(config.MAX_LOG_HISTORY_SIZE)
 
         self.__should_exit = False
 
-        self.exchange: Exchange = exchange
+        self.exchange = exchange
         self.INVERSION = inversion
         self.LEVELS = levels
         self.DELTA = range
-        self.STARTING_PRICE = starting_price if starting_price is not None else self.exchange.current_price()
+        self.STARTING_PRICE = starting_price
         self.UPPER_BOUND = self.STARTING_PRICE * (1 + range/100)
         self.LOWER_BOUND = self.STARTING_PRICE * (1 - range/100)
         self.LEVEL_HEIGHT = (self.UPPER_BOUND - self.LOWER_BOUND) / (2 * self.LEVELS)
@@ -36,17 +65,19 @@ class GridTrading(TradingStrategy):
         self.usdt = self.INVERSION
         self.btc = 0
 
-    def update(self):
-        if not self.__started and self.__should_start():
+    def update_price(self, current_price):
+        if self.__should_start():
             self.__started = True
             self.__on_start()
 
-        current_price = self.exchange.current_price()  
         if self.__started:
             previous_level = self.__current_level() - 1
             next_level = self.__current_level() + 1
+
             if self.__price_out_of_bounds(current_price):
                 self.stop()
+
+            if self.__should_exit:
                 self.on_exit()
             elif current_price <= self.lower_level and self.exchange.was_filled(self.active_orders[previous_level][0]):
                 self.__level_down()
@@ -54,9 +85,6 @@ class GridTrading(TradingStrategy):
             elif current_price >= self.upper_level and self.exchange.was_filled(self.active_orders[next_level][0]):
                 self.__level_up()
                 self.__on_level_up()
-
-    def should_exit(self):
-        return self.__should_exit
 
     def on_exit(self):
         self.__log_event(Event.TERMINATE)
@@ -75,16 +103,16 @@ class GridTrading(TradingStrategy):
         }
 
     def __should_start(self):
-        return self.exchange.was_filled(self.INITIAL_BUY_ORDER)
+        return not self.__started and self.exchange.was_filled(self.INITIAL_BUY_ORDER)
 
     def __initial_level(self):
-        return self.LEVELS # round((self.STARTING_PRICE - self.LOWER_BOUND) / self.LEVEL_HEIGHT)
+        return self.LEVELS
 
     def __current_level(self):
         return round((self.mid_level - self.LOWER_BOUND) / self.LEVEL_HEIGHT)
 
     def __current_level_price(self):
-        return self.mid_level # self.__level_price(self.__current_level())
+        return self.mid_level
 
     def __level_price(self, level):
         return self.LOWER_BOUND + level * self.LEVEL_HEIGHT
@@ -101,9 +129,6 @@ class GridTrading(TradingStrategy):
         self.upper_level = self.mid_level
         self.mid_level = self.lower_level
         self.lower_level -= self.LEVEL_HEIGHT
-
-    def __balance(self):
-        return self.usdt + self.exchange.btc_to_usdt_with_fee(self.btc, self.exchange.current_price())
 
     def __return_percentaje(self, buy_price, sell_price):
         return 100 * ((sell_price / buy_price) * self.exchange.tao() -1)
@@ -128,7 +153,7 @@ class GridTrading(TradingStrategy):
                }
 
     def __status(self):
-        return {"usdt": self.usdt, "btc": self.btc, "profit": self.profit, "balance": self.__balance()}
+        return {"usdt": self.usdt, "btc": self.btc, "profit": self.profit}
 
     def __on_start(self):
         self.__log_event(Event.START)

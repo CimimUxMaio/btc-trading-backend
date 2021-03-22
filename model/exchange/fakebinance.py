@@ -1,37 +1,11 @@
-from model.exchange.exchange import Exchange
-import threading
-import requests
-from datetime import datetime
-import model.config as config
 import model.logger as logger
+import model.pricehandler as pricehandler
 
-def get_resource(resource, params = {}):
-    # include API-KEY if needed
-    url = config.BINANCE_API + resource
-    res = requests.get(url, params)
-    res.raise_for_status()
-    return res.json()
-
-class FakeBinance(Exchange):
+class FakeBinance:
     def __init__(self, fee=0.001):
         self.fee = fee
-        self.__last_price_time = datetime.now()
-        self.__last_price = self.__force_get_current_price()
-        self.__price_mutex = threading.Lock()
         self.__order_id_acum = 1
         self.__order_prices = {}
-
-    def current_price(self):
-        self.__price_mutex.acquire()
-        now = datetime.now()
-        delta_time = now - self.__last_price_time
-        max_delta = config.STEP_FREQUENCY * 60 * 0.1
-        if(delta_time.seconds >= max_delta):
-            self.__last_price_time = now
-            self.__last_price = self.__force_get_current_price()
-        
-        self.__price_mutex.release()
-        return self.__last_price
 
     def transaction_fee(self):
         return self.fee
@@ -54,18 +28,17 @@ class FakeBinance(Exchange):
     def was_filled(self, order_id):
         price_when_ordered = self.__order_prices[order_id][0]
         order_price = self.__order_prices[order_id][1]
-        current_price = self.current_price()
+        current_price = self.__current_price()
         return price_when_ordered <= order_price <= current_price or price_when_ordered >= order_price >= current_price
 
     def cancel_order(self, order_id):
         logger.info(logger.ORDER_CANCEL, f"Order {order_id} was canceled.")
 
-    def __force_get_current_price(self):
-        res = get_resource("/ticker/price", { "symbol": "BTCUSDT" })
-        return float(res["price"])
-
     def __generate_order(self, price):
         order_id = self.__order_id_acum
         self.__order_id_acum += 1
-        self.__order_prices[order_id] = (self.current_price(), price)
+        self.__order_prices[order_id] = (self.__current_price(), price)
         return order_id
+
+    def __current_price(self):
+        return pricehandler.INSTANCE.peek_price()

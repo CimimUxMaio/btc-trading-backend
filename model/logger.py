@@ -1,9 +1,7 @@
-import logging
 import model.config as config
+import app
 
-logging.basicConfig(format="[%(asctime)s][%(levelname)s]%(message)s")
-__logger = logging.getLogger(__name__)
-__logger.setLevel(logging.DEBUG)
+__logger = app.app.logger
 
 def info(event, message):
     __logger.info("[%s] %s" % (event, message))

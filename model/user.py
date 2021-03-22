@@ -1,4 +1,3 @@
-from model.strategies.tradingstrategy import TradingStrategy
 from model.bot import Bot
 
 
@@ -21,17 +20,15 @@ class User:
     def active_bots(self):
         return self.__active_bots
 
-    def register_bot(self, strategy: TradingStrategy):
-        new_bot = Bot(self, strategy)
-        new_bot.start()
-        self.__active_bots.append(new_bot)
+    def register_bot(self, strategy):
+        self.__active_bots.append(Bot(id=self.__next_bot_id(), strategy=strategy))
 
     def unregister_bot(self, bot_id):
         self.__active_bots = list(filter(lambda bot: bot.id != bot_id, self.__active_bots))
 
     def get_bot_by_id(self, bot_id):
-        return next((b for b in self.active_bots if b.id == bot_id), None)
+        return next((bot for bot in self.active_bots if bot.id == bot_id), None)
 
-    def next_bot_id(self):
+    def __next_bot_id(self):
         self.__bot_id_acum += 1
         return self.__bot_id_acum

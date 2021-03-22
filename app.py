@@ -1,8 +1,10 @@
-from model.httperrors import BadParametersError, BotNotFoundError, HttpError, TokenNotFoundError, UserAlreadyExistsError
+from model.strategylog import StrategyLog
+import model.pricehandler as pricehandler
+from model.httperrors import BadParametersError, BotNotFoundError, HttpError, TokenNotFoundError
 from model.user import User
 from flask.helpers import make_response
 from flask.json import jsonify
-from model.exchange.fakebinance import FakeBinance, get_resource
+from model.exchange.fakebinance import FakeBinance
 from model.strategies import gridtrading
 import model.config as config
 from flask import Flask, request
@@ -13,6 +15,7 @@ import datetime
 import http
 from model.bot import Bot
 from flask_cors import CORS
+import model.logger as logger
 
 
 app = Flask(__name__)
@@ -47,9 +50,8 @@ def get_user_from_token() -> User:
 
 
 @app.route("/price")
-def test():
-    response_json = get_resource("/ticker/price", params={ "symbol": "BTCUSDT" })
-    return make_response(jsonify({"price": response_json["price"]}))
+def current_price():
+    return make_response(jsonify({"price": pricehandler.INSTANCE.peek_price()}))
 
 
 @app.route("/users", methods=["POST"])
@@ -66,7 +68,7 @@ def create_user():
 
 @app.route("/token", methods=["POST"])
 def login():
-    response = make_response("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
+    response = make_error_response("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
 
     auth = request.authorization
     if not auth:
@@ -115,13 +117,18 @@ def create_bot():
         inversion = float(data["inversion"])
         range = float(data["range"])
         levels = int(data["levels"])
-        starting_price = float(data["startingPrice"]) if "startingPrice" in data else None
+        starting_price = float(data["startingPrice"]) if "startingPrice" in data else pricehandler.INSTANCE.peek_price()
     except ValueError:
         raise BadParametersError()
 
-    strategy = gridtrading.GridTrading(inversion, range, levels, FakeBinance(), starting_price=starting_price)
-    
+    builder = gridtrading.GridTradingBuilder()
+    builder.set_config(inversion, range, levels, starting_price)
+    builder.set_exchange(FakeBinance())
+
+    strategy = builder.build()
+    pricehandler.INSTANCE.add_observer(strategy)
     get_user_from_token().register_bot(strategy)
+
     return make_response("Bot created successfully!")
 
 
@@ -142,3 +149,9 @@ def stop_bot(bot_id):
     
     bot.stop()
     return make_response("Bot stopped successfully!")
+
+
+
+if __name__ == "__main__":
+    pricehandler.start_instance()
+    app.run()
