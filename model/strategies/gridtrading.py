@@ -1,4 +1,5 @@
 from model.strategylog import StrategyLog, Event
+import model.strategies.strategystage as strategystage
 import model.loghistory as loghistory
 import model.config as config
 import model.logger as logger
@@ -10,7 +11,7 @@ class GridTradingBuildException(Exception):
 class GridTradingBuilder:
     def __init__(self):
         self.__components = {}
-        for component in ["inversion", "range", "levels", "starting_price", "exchange"]:
+        for component in ["inversion", "range", "levels", "starting_price", "exchange", "pricehandler"]:
             self.__components[component] = None
 
     def set_config(self, inversion, range, levels, starting_price):
@@ -19,8 +20,9 @@ class GridTradingBuilder:
         self.__components["levels"] = levels
         self.__components["starting_price"] = starting_price
 
-    def set_exchange(self, exchange):
+    def set_exchange_config(self, exchange, pricehandler):
         self.__components["exchange"] = exchange
+        self.__components["pricehandler"] = pricehandler
 
     def build(self):
         missing_components = []
@@ -35,10 +37,8 @@ class GridTradingBuilder:
 
 
 class GridTrading:
-    def __init__(self, inversion, range, levels, exchange, starting_price):
+    def __init__(self, inversion, range, levels, starting_price, exchange, pricehandler):
         self.__log_history = loghistory.LogHistory(config.MAX_LOG_HISTORY_SIZE)
-
-        self.__should_exit = False
 
         self.exchange = exchange
         self.INVERSION = inversion
@@ -64,6 +64,10 @@ class GridTrading:
         self.profit = 0
         self.usdt = self.INVERSION
         self.btc = 0
+        
+        self.__stage = strategystage.NEW
+        self.__pricehandler = pricehandler
+        self.__pricehandler.add_observer(self)
 
     def update_price(self, current_price):
         if self.__should_start():
@@ -76,31 +80,34 @@ class GridTrading:
 
             if self.__price_out_of_bounds(current_price):
                 self.stop()
+                return
 
-            if self.__should_exit:
-                self.on_exit()
-            elif current_price <= self.lower_level and self.exchange.was_filled(self.active_orders[previous_level][0]):
+            if current_price <= self.lower_level and self.exchange.was_filled(self.active_orders[previous_level][0]):
                 self.__level_down()
                 self.__on_level_down()
             elif current_price >= self.upper_level and self.exchange.was_filled(self.active_orders[next_level][0]):
                 self.__level_up()
                 self.__on_level_up()
 
-    def on_exit(self):
+    def stop(self):
         self.__log_event(Event.TERMINATE)
+        self.__stage = strategystage.TERMINATED
+        self.__pricehandler.remove_observer(self)
 
         for order_id in self.active_orders.values():
             self.exchange.cancel_order(order_id[0])
 
-    def stop(self):
-        self.__should_exit = True
-
     def dto(self):
         return {
+            "stage": self.__stage,
             "configuration": self.__config(),
             "status": self.__status(),
             "logs": [log.dto() for log in self.__log_history.history]
         }
+
+    @property
+    def stage(self):
+        return self.__stage
 
     def __should_start(self):
         return not self.__started and self.exchange.was_filled(self.INITIAL_BUY_ORDER)
@@ -153,10 +160,14 @@ class GridTrading:
                }
 
     def __status(self):
-        return {"usdt": self.usdt, "btc": self.btc, "profit": self.profit}
+        return {"usdt": self.usdt, "btc": self.btc, "profit": self.profit, "balance": self.__balance()}
+
+    def __balance(self):
+        return self.usdt + self.exchange.btc_to_usdt_with_fee(self.btc, self.__pricehandler.peek_price())
 
     def __on_start(self):
         self.__log_event(Event.START)
+        self.__stage = strategystage.RUNNING
 
         # Initial buy excecuted
         self.usdt -= self.INITIAL_BTC_INVERSION

@@ -1,4 +1,3 @@
-from model.strategylog import StrategyLog
 import model.pricehandler as pricehandler
 from model.httperrors import BadParametersError, BotNotFoundError, HttpError, TokenNotFoundError
 from model.user import User
@@ -15,25 +14,24 @@ import datetime
 import http
 from model.bot import Bot
 from flask_cors import CORS
-import model.logger as logger
 
 
 app = Flask(__name__)
 CORS(app)
 
-def make_error_response(error_message, code):
-    return make_response(jsonify({ "message": error_message }), code)
+def make_response_message(message, code=http.HTTPStatus.OK):
+    return make_response(jsonify({ "message": message }), code)
 
 def generate_token(username):
     return jwt.encode({"username" : username, "exp" : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, config.JWT_SECRET_KEY)
 
 @app.errorhandler(jwt.InvalidTokenError)
 def on_invalid_token(e):
-    return make_error_response("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
+    return make_response_message("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
 
 @app.errorhandler(HttpError)
 def on_token_not_found(e: HttpError):
-    return make_error_response(str(e), e.code)
+    return make_response_message(str(e), e.code)
 
 
 def get_user_from_token() -> User:
@@ -63,12 +61,12 @@ def create_user():
     password = request.json["password"]
 
     userrepo.add(User(email, hashlib.sha256(password.encode()).hexdigest()))
-    return make_response("User successfuly created!")
+    return make_response_message("User successfuly created!")
 
 
 @app.route("/token", methods=["POST"])
 def login():
-    response = make_error_response("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
+    response = make_response_message("Invalid credentials", http.HTTPStatus.UNAUTHORIZED)
 
     auth = request.authorization
     if not auth:
@@ -123,33 +121,40 @@ def create_bot():
 
     builder = gridtrading.GridTradingBuilder()
     builder.set_config(inversion, range, levels, starting_price)
-    builder.set_exchange(FakeBinance())
+    builder.set_exchange_config(FakeBinance(), pricehandler.INSTANCE)
 
     strategy = builder.build()
-    pricehandler.INSTANCE.add_observer(strategy)
     get_user_from_token().register_bot(strategy)
 
-    return make_response("Bot created successfully!")
+    return make_response_message("Bot created successfully!")
 
-
-@app.route("/bots/<int:bot_id>")
-def bot(bot_id):
-    bot: Bot = get_user_from_token().get_bot_by_id(bot_id)
-    if not bot:
-        raise BotNotFoundError()
-
-    return make_response(jsonify(bot.dto()))
-
-
-@app.route("/bots/<int:bot_id>", methods=["DELETE"])
-def stop_bot(bot_id):
+def get_bot_or_error(bot_id):
     bot: Bot = get_user_from_token().get_bot_by_id(bot_id)
     if not bot:
         raise BotNotFoundError()
     
-    bot.stop()
-    return make_response("Bot stopped successfully!")
+    return bot
 
+
+@app.route("/bots/<int:bot_id>")
+def bot(bot_id):
+    bot = get_bot_or_error(bot_id)
+    return make_response(jsonify(bot.dto()))
+
+
+@app.route("/bots/<int:bot_id>", methods=["PUT"])
+def stop_bot(bot_id):
+    bot = get_bot_or_error(bot_id)    
+    bot.stop()
+    return make_response_message("Bot stopped successfully!")
+
+@app.route("/bots/<int:bot_id>", methods=["DELETE"])
+def delete_bot(bot_id):
+    bot = get_bot_or_error(bot_id)
+    if not bot.is_terminated():
+        bot.stop()
+    get_user_from_token().unregister_bot(bot_id)
+    return make_response_message("Bot unregistered successfully!")
 
 
 if __name__ == "__main__":
