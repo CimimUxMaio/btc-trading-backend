@@ -18,3 +18,6 @@ def BotNotFoundError():
 
 def UserAlreadyExistsError():
     return HttpError("User already exists", http.HTTPStatus.CONFLICT)
+
+def BotStillRunningError():
+    return HttpError("Bot is still running", http.HTTPStatus.FORBIDDEN)

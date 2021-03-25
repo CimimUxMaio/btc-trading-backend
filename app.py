@@ -152,7 +152,8 @@ def stop_bot(bot_id):
 def delete_bot(bot_id):
     bot = get_bot_or_error(bot_id)
     if not bot.is_terminated():
-        bot.stop()
+        raise BotStillRunningError()
+
     get_user_from_token().unregister_bot(bot_id)
     return make_response_message("Bot unregistered successfully!")
 
