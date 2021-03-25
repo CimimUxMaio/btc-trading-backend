@@ -2,7 +2,6 @@ from model.strategylog import StrategyLog, Event
 import model.strategies.strategystage as strategystage
 import model.loghistory as loghistory
 import model.config as config
-import model.logger as logger
 
 class GridTradingBuildException(Exception):
     def __init__(self, missing_components):

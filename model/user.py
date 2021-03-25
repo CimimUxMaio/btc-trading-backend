@@ -20,8 +20,10 @@ class User:
     def active_bots(self):
         return self.__active_bots
 
-    def register_bot(self, strategy):
-        self.__active_bots.append(Bot(id=self.__next_bot_id(), strategy=strategy))
+    def register_bot(self, strategy, name=None):
+        id = self.__next_bot_id()
+        final_name = name if name is not None else str(id)
+        self.__active_bots.append(Bot(id=id, name=final_name, strategy=strategy))
 
     def unregister_bot(self, bot_id):
         self.__active_bots = list(filter(lambda bot: bot.id != bot_id, self.__active_bots))

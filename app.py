@@ -1,5 +1,5 @@
 import model.pricehandler as pricehandler
-from model.httperrors import BadParametersError, BotNotFoundError, HttpError, TokenNotFoundError
+from model.httperrors import BadParametersError, BotNotFoundError, HttpError, TokenNotFoundError, BotStillRunningError
 from model.user import User
 from flask.helpers import make_response
 from flask.json import jsonify
@@ -116,6 +116,7 @@ def create_bot():
         range = float(data["range"])
         levels = int(data["levels"])
         starting_price = float(data["startingPrice"]) if "startingPrice" in data else pricehandler.INSTANCE.peek_price()
+        name = data["name"] if "name" in data else None
     except ValueError:
         raise BadParametersError()
 
@@ -124,7 +125,7 @@ def create_bot():
     builder.set_exchange_config(FakeBinance(), pricehandler.INSTANCE)
 
     strategy = builder.build()
-    get_user_from_token().register_bot(strategy)
+    get_user_from_token().register_bot(strategy, name)
 
     return make_response_message("Bot created successfully!")
 
