@@ -1,7 +1,8 @@
+from model.exchange.exchange import Exchange
 import model.logger as logger
 import model.pricehandler as pricehandler
 
-class FakeBinance:
+class FakeBinance(Exchange):
     def __init__(self, fee=0.001):
         self.fee = fee
         self.__order_id_acum = 1
@@ -9,15 +10,6 @@ class FakeBinance:
 
     def transaction_fee(self):
         return self.fee
-
-    def tao(self):
-        return pow(1-self.transaction_fee(), 2)
-
-    def usdt_to_btc_with_fee(self, usdt, price):
-        return usdt * (1- self.transaction_fee()) / price
-
-    def btc_to_usdt_with_fee(self, btc, price):
-        return price * btc * (1 - self.transaction_fee())
 
     def set_limit_buy_order(self, usdt, price):
         return self.__generate_order(price)

@@ -4,7 +4,7 @@ from model.user import User
 from flask.helpers import make_response
 from flask.json import jsonify
 from model.exchange.fakebinance import FakeBinance
-from model.strategies import gridtrading
+from model.strategies.gridtrading.builder import GridTradingBuilder
 import model.config as config
 from flask import Flask, request
 import jwt
@@ -120,7 +120,7 @@ def create_bot():
     except ValueError:
         raise BadParametersError()
 
-    builder = gridtrading.GridTradingBuilder()
+    builder = GridTradingBuilder()
     builder.set_config(inversion, range, levels, starting_price)
     builder.set_exchange_config(FakeBinance(), pricehandler.INSTANCE)
 
